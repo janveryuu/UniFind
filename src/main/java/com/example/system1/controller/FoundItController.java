@@ -226,21 +226,30 @@ public class FoundItController {
 
     @PostMapping("/report")
     public String reportLostItem(@ModelAttribute Item newItem, @RequestParam("imageFile") MultipartFile file) {
-        String filename = imageStorageService.saveImage(file);
-        newItem.setImageFilename(filename);
+        // Save placeholder first so UI responds instantly
+        newItem.setImageFilename("https://via.placeholder.com/300x200?text=Processing+Image...");
         itemRepository.save(newItem);
+        Long itemId = newItem.getId();
         
         if (file != null && !file.isEmpty()) {
             try {
                 byte[] fileBytes = file.getBytes();
                 String mimeType = file.getContentType();
-                Long itemId = newItem.getId();
+                String originalFilename = file.getOriginalFilename();
+                
                 java.util.concurrent.CompletableFuture.runAsync(() -> {
-                    String aiTags = geminiService.analyzeImage(fileBytes, mimeType);
-                    Item itemToUpdate = itemRepository.findById(itemId).orElse(null);
-                    if (itemToUpdate != null) {
-                        itemToUpdate.setAiTags(aiTags);
-                        itemRepository.save(itemToUpdate);
+                    try {
+                        String filename = imageStorageService.saveImageBytes(fileBytes, originalFilename);
+                        String aiTags = geminiService.analyzeImage(fileBytes, mimeType);
+                        
+                        Item itemToUpdate = itemRepository.findById(itemId).orElse(null);
+                        if (itemToUpdate != null) {
+                            itemToUpdate.setImageFilename(filename);
+                            itemToUpdate.setAiTags(aiTags);
+                            itemRepository.save(itemToUpdate);
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
                     }
                 });
             } catch (Exception e) {}
@@ -284,15 +293,32 @@ public class FoundItController {
         claim.setProvidedAnswer(verificationAnswer);
         claim.setStatus("PENDING");
         claim.setClaimToken("QR-" + System.currentTimeMillis() + "-" + loggedInUser.getStudentId());
-
-        if (proofFile != null && !proofFile.isEmpty()) {
-            String filename = imageStorageService.saveImage(proofFile);
-            claim.setProofImage(filename);
-        }
-
+        
+        // Save immediately with placeholder
+        claim.setProofImage("https://via.placeholder.com/300x200?text=Processing+Proof...");
         claimRepository.save(claim);
+        Long savedClaimId = claim.getId();
+
         item.setStatus("CLAIMING");
         itemRepository.save(item);
+        
+        if (proofFile != null && !proofFile.isEmpty()) {
+            try {
+                byte[] proofBytes = proofFile.getBytes();
+                String originalFilename = proofFile.getOriginalFilename();
+                
+                java.util.concurrent.CompletableFuture.runAsync(() -> {
+                    try {
+                        String filename = imageStorageService.saveImageBytes(proofBytes, originalFilename);
+                        ClaimRequest claimToUpdate = claimRepository.findById(savedClaimId).orElse(null);
+                        if (claimToUpdate != null) {
+                            claimToUpdate.setProofImage(filename);
+                            claimRepository.save(claimToUpdate);
+                        }
+                    } catch (Exception e) {}
+                });
+            } catch (Exception e) {}
+        }
         
         if (item.getReporter() != null && item.getReporter().getEmail() != null) {
             emailService.sendEmail(item.getReporter().getEmail(), "Someone Claimed Your Item", "A user has claimed the item you reported: '" + item.getName() + "'. The admin will review their claim.");

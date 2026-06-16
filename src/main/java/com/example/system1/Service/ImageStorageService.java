@@ -54,4 +54,28 @@ public class ImageStorageService {
             throw new RuntimeException("Failed to store image.", e);
         }
     }
+
+    public String saveImageBytes(byte[] fileBytes, String originalFilename) {
+        try {
+            if (fileBytes == null || fileBytes.length == 0) return "default.png";
+
+            // If Cloudinary is configured, upload to cloud
+            if (cloudinary != null) {
+                Map uploadResult = cloudinary.uploader().upload(fileBytes, 
+                    ObjectUtils.asMap("transformation", new com.cloudinary.Transformation().width(800).height(800).crop("limit").quality("auto")));
+                return uploadResult.get("secure_url").toString();
+            }
+            
+            // Otherwise, fallback to local storage
+            if (!Files.exists(rootLocation)) {
+                Files.createDirectories(rootLocation);
+            }
+            String uniqueFilename = UUID.randomUUID().toString() + "_" + originalFilename;
+            Files.write(this.rootLocation.resolve(uniqueFilename), fileBytes);
+            return uniqueFilename;
+            
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to store image.", e);
+        }
+    }
 }
