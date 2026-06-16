@@ -11,6 +11,7 @@ public class EmailService {
     @Autowired
     private JavaMailSender mailSender;
 
+    @org.springframework.scheduling.annotation.Async
     public void sendEmail(String to, String subject, String text) {
         System.out.println("======================================");
         System.out.println("MOCK EMAIL SENT TO: " + to);

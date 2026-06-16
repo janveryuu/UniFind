@@ -37,7 +37,8 @@ public class ImageStorageService {
 
             // If Cloudinary is configured, upload to cloud
             if (cloudinary != null) {
-                Map uploadResult = cloudinary.uploader().upload(file.getBytes(), ObjectUtils.emptyMap());
+                Map uploadResult = cloudinary.uploader().upload(file.getBytes(), 
+                    ObjectUtils.asMap("transformation", new com.cloudinary.Transformation().width(800).height(800).crop("limit").quality("auto")));
                 return uploadResult.get("secure_url").toString();
             }
             
