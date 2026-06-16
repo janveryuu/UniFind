@@ -22,7 +22,7 @@
 
 ## 🌟 Live Demo
 The application is currently live and deployed in the cloud!  
-👉 **[Visit UniFind Live](https://unifind.onrender.com)**
+👉 **[Visit UniFind Live](https://unifind1.onrender.com)**
 
 ---
 
