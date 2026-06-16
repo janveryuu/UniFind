@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <link rel="icon" type="image/png" href="/images/unifind-logo.png">
+    <title>UNIFIND: Support Inbox</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.5.1/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+    <style>
+        :root { --bsu-red: #8B0000; --bsu-gold: #FFD700; --light-gray: #f4f4f9; }
+        body { margin: 0; display: flex; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--light-gray); min-height: 100vh; position: relative; }
+        
+        body::before {
+            content: ''; position: fixed; top: 0; left: 250px; width: calc(100% - 250px); height: 100%;
+            background: url('/images/unifind-logo.png') no-repeat center center;
+            background-size: 40%; opacity: 0.12; z-index: -1;
+        }
+        
+        /* UNIFIED SIDEBAR */
+        .sidebar { width: 250px; background: white; height: 100vh; position: fixed; border-right: 1px solid #eee; display: flex; flex-direction: column; z-index: 100;}
+        .sidebar-header { padding: 20px; display: flex; align-items: center; border-bottom: 1px solid #eee; }
+        .sidebar-header img { height: 35px; margin-right: 10px; }
+        .sidebar-header h2 { color: var(--bsu-red); margin: 0; font-size: 22px; }
+        
+        .map-container { padding: 20px; border-bottom: 1px solid #eee; }
+        #campusMap { height: 150px; width: 100%; border-radius: 10px; border: 1px solid #ddd; z-index: 1;}
+
+        .nav-links { padding: 20px 0; display: flex; flex-direction: column; gap: 5px; }
+        .nav-links a { text-decoration: none; color: #555; padding: 12px 25px; display: flex; align-items: center; font-weight: 500; border-left: 4px solid transparent; transition: all 0.3s ease-in-out; }
+        .nav-links a i { width: 25px; font-size: 18px; }
+        .nav-links a:hover { background: #fff5f5; color: var(--bsu-red); }
+        .active-link { background: #fff5f5; color: var(--bsu-red) !important; border-left: 4px solid var(--bsu-red) !important; }
+
+        /* MAIN CONTENT */
+        main { margin-left: 250px; width: calc(100% - 250px); padding: 40px; box-sizing: border-box; display: flex; gap: 30px; align-items: flex-start;}
+        
+        /* MESSAGING SPLIT LAYOUT */
+        .contact-card { background: rgba(255, 255, 255, 0.95); border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); padding: 30px; width: 40%; border-top: 5px solid var(--bsu-red); }
+        .btn-send { background: var(--bsu-red); color: white; border: none; padding: 12px; border-radius: 6px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 10px; transition: 0.2s;}
+        .btn-send:hover { background: #600000; }
+        .form-input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; background: #fdfdfd;}
+        
+        .history-card { background: rgba(255, 255, 255, 0.95); border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); padding: 30px; width: 60%; }
+        .msg-box { background: white; border: 1px solid #eee; padding: 20px; border-radius: 10px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.02);}
+    </style>
+</head>
+<body>
+    
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <img th:src="@{/images/unifind-logo.png}" alt="Logo">
+            <h2>UNIFIND</h2>
+        </div>
+        <div class="map-container">
+            <p style="margin: 0 0 10px 0; font-size: 12px; font-weight: bold; color: #888;">ALANGILAN CAMPUS</p>
+            <div id="campusMap"></div>
+        </div>
+        <div class="nav-links">
+            <a href="/student"><i class="fa-solid fa-layer-group"></i> Item Database</a>
+            <a href="/my-items"><i class="fa-solid fa-ticket"></i> Claims & Tickets</a>
+            <a href="/contact" class="active-link"><i class="fa-solid fa-inbox"></i> Support Inbox</a>
+            <a href="/profile"><i class="fa-solid fa-user"></i> My Profile</a>
+            <a href="/logout" style="margin-top: auto; color: #dc3545;"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+        </div>
+    </div>
+
+    <main>
+        <div class="contact-card">
+            <h2 style="margin-top: 0; color: #333;"><i class="fa-solid fa-paper-plane" style="color: var(--bsu-red);"></i> Message Admin</h2>
+            <p style="color: #666; font-size: 14px;">Inquire about a specific item or report a system issue directly to the CICS administrators.</p>
+            
+            <div th:if="${param.success}" style="background: #e8f5e9; color: #28a745; padding: 12px; border-radius: 6px; margin-bottom: 20px; font-weight: bold; font-size: 13px;">
+                <i class="fa-solid fa-circle-check"></i> Message sent successfully!
+            </div>
+
+            <form id="chatForm" style="display: flex; flex-direction: column; gap: 15px;">
+                <div>
+                    <label style="font-weight: bold; font-size: 13px; color: #555;">Your Name</label>
+                    <input type="text" id="senderName" required class="form-input">
+                </div>
+                <div>
+                    <label style="font-weight: bold; font-size: 13px; color: #555;">Subject</label>
+                    <input type="text" id="subject" placeholder="Inquiry about Item..." required class="form-input">
+                </div>
+                <div>
+                    <label style="font-weight: bold; font-size: 13px; color: #555;">Message Content</label>
+                    <textarea id="content" required class="form-input" style="height: 120px; resize: vertical;"></textarea>
+                </div>
+                <button type="submit" class="btn-send">Send Message</button>
+            </form>
+        </div>
+
+        <div class="history-card">
+            <h2 style="margin-top: 0; color: #333;"><i class="fa-solid fa-clock-rotate-left"></i> My Inquiry History</h2>
+            <div id="messageHistory">
+            
+            <div th:each="msg : ${allMessages}" class="msg-box">
+                <strong th:text="${msg.subject}" style="font-size: 16px; color: var(--bsu-red);"></strong>
+                <p style="font-size: 14px; color: #444; margin: 8px 0; line-height: 1.5;" th:text="${msg.content}"></p>
+                
+                <div th:if="${msg.adminReply != null}" style="background: #fdfaf0; padding: 15px; border-radius: 8px; border-left: 4px solid var(--bsu-gold); margin-top: 15px;">
+                    <small style="font-weight: bold; color: #856404; display: block; margin-bottom: 5px;">ADMIN RESPONSE:</small>
+                    <p style="font-size: 14px; margin: 0; color: #333;" th:text="${msg.adminReply}"></p>
+                </div>
+                <div th:unless="${msg.adminReply != null}" style="margin-top: 15px; border-top: 1px dashed #eee; padding-top: 10px;">
+                    <small style="color: #999; font-style: italic;"><i class="fa-regular fa-clock"></i> Waiting for Admin response...</small>
+                </div>
+            </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        var stompClient = null;
+
+        function connect() {
+            var socket = new SockJS('/ws');
+            stompClient = Stomp.over(socket);
+            stompClient.connect({}, function (frame) {
+                console.log('Connected: ' + frame);
+                stompClient.subscribe('/topic/public', function (messageOutput) {
+                    var message = JSON.parse(messageOutput.body);
+                    displayMessage(message);
+                });
+            });
+        }
+
+        function displayMessage(msg) {
+            var historyDiv = document.getElementById('messageHistory');
+            
+            // If message already exists (reply), update it
+            var existingMsg = document.getElementById('msg-' + msg.id);
+            if (existingMsg) {
+                if (msg.adminReply) {
+                    var replyHtml = `
+                        <div style="background: #fdfaf0; padding: 15px; border-radius: 8px; border-left: 4px solid var(--bsu-gold); margin-top: 15px;">
+                            <small style="font-weight: bold; color: #856404; display: block; margin-bottom: 5px;">ADMIN RESPONSE:</small>
+                            <p style="font-size: 14px; margin: 0; color: #333;">${msg.adminReply}</p>
+                        </div>
+                    `;
+                    var waitingDiv = existingMsg.querySelector('.waiting-reply');
+                    if(waitingDiv) waitingDiv.outerHTML = replyHtml;
+                }
+                return;
+            }
+
+            // New message
+            var html = `
+            <div class="msg-box" id="msg-${msg.id}">
+                <strong style="font-size: 16px; color: var(--bsu-red);">${msg.subject}</strong>
+                <p style="font-size: 14px; color: #444; margin: 8px 0; line-height: 1.5;">${msg.content}</p>
+            `;
+            
+            if (msg.adminReply) {
+                html += `
+                <div style="background: #fdfaf0; padding: 15px; border-radius: 8px; border-left: 4px solid var(--bsu-gold); margin-top: 15px;">
+                    <small style="font-weight: bold; color: #856404; display: block; margin-bottom: 5px;">ADMIN RESPONSE:</small>
+                    <p style="font-size: 14px; margin: 0; color: #333;">${msg.adminReply}</p>
+                </div>`;
+            } else {
+                html += `
+                <div class="waiting-reply" style="margin-top: 15px; border-top: 1px dashed #eee; padding-top: 10px;">
+                    <small style="color: #999; font-style: italic;"><i class="fa-regular fa-clock"></i> Waiting for Admin response...</small>
+                </div>`;
+            }
+            html += `</div>`;
+            historyDiv.innerHTML = html + historyDiv.innerHTML;
+        }
+
+        document.getElementById('chatForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            var message = {
+                senderName: document.getElementById('senderName').value,
+                subject: document.getElementById('subject').value,
+                content: document.getElementById('content').value
+            };
+            stompClient.send("/app/chat.sendMessage", {}, JSON.stringify(message));
+            
+            document.getElementById('subject').value = '';
+            document.getElementById('content').value = '';
+        });
+
+        connect();
+        var map = L.map('campusMap').setView([13.7842, 121.0748], 17); 
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        L.marker([13.7842, 121.0748]).addTo(map).bindPopup('<b>BatStateU Alangilan Campus</b>');
+    </script>
+</body>
+</html>
