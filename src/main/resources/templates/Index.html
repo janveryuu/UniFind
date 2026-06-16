@@ -161,7 +161,7 @@
                     </div>
 
                     <div th:if="${item.status == 'AVAILABLE'}" style="margin-top: 15px; border-top: 1px solid #eee; padding-top: 15px;">
-                        <form th:action="@{/claim/{id}(id=${item.id})}" method="post" enctype="multipart/form-data" style="display: flex; flex-direction: column; gap: 8px;">
+                        <form th:action="@{/claim/{id}(id=${item.id})}" method="post" enctype="multipart/form-data" onsubmit="this.querySelector('button').innerHTML='<i class=\'fa-solid fa-spinner fa-spin\'></i> Processing...'; this.querySelector('button').style.pointerEvents='none';" style="display: flex; flex-direction: column; gap: 8px;">
                             <input type="text" name="ownershipDetails" placeholder="Ownership Proof (e.g. Serial #)" required class="form-control" style="padding: 8px; font-size: 12px;">
                             <div th:if="${item.verificationQuestion != null and !item.verificationQuestion.isEmpty()}">
                                 <label style="font-size: 11px; color: #666; font-weight: bold; margin-top: 5px;" th:text="${item.verificationQuestion}"></label>
@@ -274,7 +274,7 @@
 
     <script>
         // 1. Main Dashboard Map 
-        var map = L.map('campusMap').setView([13.7842, 121.0748], 17); 
+        var map = L.map('campusMap', { scrollWheelZoom: false }).setView([13.7842, 121.0748], 17); 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
         L.marker([13.7842, 121.0748]).addTo(map).bindPopup('<b>BatStateU Alangilan Campus</b>');
 
@@ -285,7 +285,7 @@
         function openReportModal() {
             document.getElementById('reportModal').style.display='flex';
             if (!reportMap) {
-                reportMap = L.map('reportMap').setView([13.7842, 121.0748], 17);
+                reportMap = L.map('reportMap', { scrollWheelZoom: false }).setView([13.7842, 121.0748], 17);
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(reportMap);
                 reportMap.on('click', function(e) {
                     if (reportMarker) { reportMap.removeLayer(reportMarker); }
@@ -316,6 +316,14 @@
                 const needsFloor = ['AEB Building', 'CICS Building', 'CET Building', 'STEER HUB'].includes(bldg);
                 document.getElementById('actualLocation').value = needsFloor ? bldg + " (" + floor + ")" : bldg;
             }
+
+            // UI Feedback to prevent double clicks during slow cloud uploads
+            const btn = document.querySelector('#reportModal .btn-report[type="submit"]');
+            if(btn) {
+                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Uploading to Cloud...';
+                btn.style.opacity = '0.7';
+                btn.style.pointerEvents = 'none';
+            }
         }
         toggleFloorSelect();
 
@@ -326,7 +334,7 @@
         function viewItemMap(lat, lng, itemName) {
             document.getElementById('viewMapModal').style.display = 'flex';
             if (!viewMap) {
-                viewMap = L.map('viewItemMapContainer').setView([lat, lng], 18);
+                viewMap = L.map('viewItemMapContainer', { scrollWheelZoom: false }).setView([lat, lng], 18);
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(viewMap);
                 viewMarker = L.marker([lat, lng]).addTo(viewMap).bindPopup("<b>" + itemName + "</b><br>Found Here!").openPopup();
             } else {
