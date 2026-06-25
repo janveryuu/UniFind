@@ -13,4 +13,4 @@ FROM eclipse-temurin:17-jre
 WORKDIR /app
 COPY --from=build /app/target/*.jar app.jar
 
-ENTRYPOINT ["java", "-Xmx400m", "-jar", "app.jar"]
+ENTRYPOINT ["java", "-Xmx256m", "-jar", "app.jar"]
